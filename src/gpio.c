@@ -1,0 +1,65 @@
+﻿#include "gpio.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <fcntl.h>
+#include <sys/mman.h>
+#include <unistd.h>
+
+// --------------------------------------------------------------
+// Global GPIO base and LED configuration
+// --------------------------------------------------------------
+volatile uint32_t *gpio = NULL;
+static int gpio_fd = -1;
+
+// Define LED GPIO lines once globally (shared across all modules)
+const unsigned int led_lines[8] = {22, 5, 6, 26, 23, 24, 25, 16};
+
+// --------------------------------------------------------------
+// Initialization and cleanup
+// --------------------------------------------------------------
+void gpio_init(void) {
+    gpio_fd = open("/dev/mem", O_RDWR | O_SYNC);
+    if (gpio_fd < 0) {
+        perror("open /dev/mem");
+        exit(1);
+    }
+
+    gpio = (volatile uint32_t *)mmap(
+        NULL, GPIO_LEN, PROT_READ | PROT_WRITE, MAP_SHARED,
+        gpio_fd, GPIO_BASE_ADDR
+    );
+    if (gpio == MAP_FAILED) {
+        perror("mmap");
+        close(gpio_fd);
+        exit(1);
+    }
+}
+
+void gpio_cleanup(void) {
+    if (!gpio || gpio == MAP_FAILED)
+        return;
+    munmap((void *)gpio, GPIO_LEN);
+    close(gpio_fd);
+    gpio_fd = -1;
+    gpio = NULL;
+}
+
+// --------------------------------------------------------------
+// Helper functions
+// --------------------------------------------------------------
+void gpio_set_outputs(const unsigned int *lines, int count) {
+    for (int i = 0; i < count; ++i) {
+        int gpio_num = lines[i];
+        volatile uint32_t *fsel = gpio + (gpio_num / 10);
+        int shift = (gpio_num % 10) * 3;
+        *fsel = (*fsel & ~(7 << shift)) | (1 << shift);  // set to 001 (output)
+    }
+}
+
+void gpio_all_off(const unsigned int *lines, int count) {
+    volatile uint32_t *GPCLR0 = gpio + 0x28 / 4;
+    uint32_t mask = 0;
+    for (int i = 0; i < count; ++i)
+        mask |= (1u << lines[i]);
+    *GPCLR0 = mask;
+}
