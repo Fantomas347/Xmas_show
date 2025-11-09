@@ -65,7 +65,7 @@ int main(void) {
             printf("Exiting program.\n");
             break;
 	  } else if (ch == 4) {
-    		emulate_udp_from_file("udp_emulation.txt");
+    		emulate_udp_from_file("udp_emulation.json");
         } else {
             printf("Invalid choice. Try again.\n");
         }
