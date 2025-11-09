@@ -19,7 +19,7 @@
 #define MAX_RUNS 60000
 #define MAX_AUDIO_FRAMES 120000000
 
-#define MUSIC_BASE_DIR "/home/pi/music"
+#define MUSIC_BASE_DIR "/home/pi/music/"
 
 // --------------------------------------------------------------
 // Globals for real-time statistics
