@@ -227,8 +227,8 @@ static void *led_thread_fn(void *arg) {
 // --------------------------------------------------------------
 void play_song(const char *base_name) {
     char wav_file[128], pattern_file[128];
-    snprintf(wav_file, sizeof(wav_file), "%s.wav", MUSIC_BASE_DIR, base_name);
-    snprintf(pattern_file, sizeof(pattern_file), "%s.txt", MUSIC_BASE_DIR, base_name);
+    snprintf(wav_file, sizeof(wav_file), "%s%s.wav", MUSIC_BASE_DIR, base_name);
+    snprintf(pattern_file, sizeof(pattern_file), "%s%s.txt", MUSIC_BASE_DIR, base_name);
 
     char led_log[128], audio_log[128];
     make_log_filename(led_log, sizeof(led_log), "led_log", base_name);

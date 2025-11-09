@@ -2,6 +2,7 @@
 #define LOAD_H
 
 #include <stdint.h>
+#include <stddef.h>
 
 #define MAX_PATTERNS 2048
 
