@@ -12,6 +12,11 @@ volatile uint32_t *gpio = NULL;
 static int gpio_fd = -1;
 
 // Define LED GPIO lines once globally (shared across all modules)
+// Pins correspond to: GPIO 22, GPIO 5, GPIO 6, and so on, of the
+// Raspberry Pi Pinout.
+// This means 4 pins on the left and 4 pins on the right.
+// The corresponding physical pins are, in order:
+// 15, 29, 31, 37, 16, 18, 22, 36.
 const unsigned int led_lines[8] = {22, 5, 6, 26, 23, 24, 25, 16};
 
 // --------------------------------------------------------------
