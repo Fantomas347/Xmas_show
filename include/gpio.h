@@ -8,7 +8,7 @@
 
 extern volatile uint32_t *gpio;
 
-const unsigned int led_lines[8];
+extern const unsigned int led_lines[8];
 
 void gpio_init(void);
 void gpio_cleanup(void);
