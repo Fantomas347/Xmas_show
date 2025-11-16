@@ -57,6 +57,33 @@ static void make_log_filename(char *dst, size_t len,
              tm.tm_hour, tm.tm_min, tm.tm_sec);
 }
 
+/*** Re-prefill after underrun ***/
+static void do_reprefill(size_t *frame_idx_ptr)
+{
+    size_t fi = *frame_idx_ptr;
+
+    for (int r = 0; r < PREFILL_PERIODS; ++r) {
+        if (fi + AUDIO_PERIOD_FRAMES > audio_frames)
+            break;
+
+        snd_pcm_sframes_t w =
+            snd_pcm_writei(pcm,
+                           &audio_data[fi * 2],
+                           AUDIO_PERIOD_FRAMES);
+
+        if (w < 0) {
+            snd_pcm_prepare(pcm);
+            r--;    // retry this prefill period
+            continue;
+        }
+
+        fi += AUDIO_PERIOD_FRAMES;
+    }
+
+    *frame_idx_ptr = fi;
+}
+
+
 // --------------------------------------------------------------
 // Audio thread
 // --------------------------------------------------------------
@@ -65,6 +92,9 @@ static void *audio_thread_fn(void *arg) {
     struct timespec next_time;
     clock_gettime(CLOCK_MONOTONIC, &next_time);
     struct timespec prev_wake_time = {0};
+
+    const snd_pcm_sframes_t max_delay_frames =
+        MAX_BUFFER_PERIODS * AUDIO_PERIOD_FRAMES;
 
     while (frame_idx + AUDIO_PERIOD_FRAMES * 3 <= audio_frames &&
            runtime_index < MAX_RUNS) {
@@ -80,7 +110,17 @@ static void *audio_thread_fn(void *arg) {
         prev_wake_time = start_time;
 
         long total_runtime_us = 0;
+
+        snd_pcm_sframes_t delay_frames = 0;
+        if (snd_pcm_delay(pcm, &delay_frames) < 0)
+            delay_frames = 0;
+
         for (int i = 0; i < 3; ++i) {
+            
+            if (delay_frames > max_delay_frames) {
+                break;
+            }
+
             struct timespec call_start, call_end;
             clock_gettime(CLOCK_MONOTONIC, &call_start);
 
@@ -93,12 +133,19 @@ static void *audio_thread_fn(void *arg) {
                     fprintf(stderr, "Underrun #%d: %s\n",
                             underrun_count, snd_strerror(written));
                 snd_pcm_prepare(pcm);
-                continue;
+
+                do_reprefill(&frame_idx);
+
+                break;
             }
 
             clock_gettime(CLOCK_MONOTONIC, &call_end);
             total_runtime_us += time_diff_us(call_start, call_end);
             frame_idx += AUDIO_PERIOD_FRAMES;
+
+            if (snd_pcm_delay(pcm, &delay_frames) < 0)
+                delay_frames = 0;
+
         }
 
         clock_gettime(CLOCK_MONOTONIC, &end_time);
