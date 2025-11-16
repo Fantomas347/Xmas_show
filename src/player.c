@@ -19,6 +19,10 @@
 #define MAX_RUNS 60000
 #define MAX_AUDIO_FRAMES 120000000
 
+#define PREFILL_PERIODS      2
+#define MIN_BUFFER_PERIODS   1
+#define MAX_BUFFER_PERIODS   3
+
 #define MUSIC_BASE_DIR "/home/pi/music/"
 
 // --------------------------------------------------------------
