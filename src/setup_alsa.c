@@ -28,8 +28,23 @@ void setup_alsa(unsigned int sample_rate, unsigned int channels) {
     snd_pcm_uframes_t period_size = AUDIO_PERIOD_FRAMES;
     snd_pcm_hw_params_set_period_size_near(pcm, params, &period_size, 0);
     snd_pcm_hw_params_set_buffer_size_near(pcm, params, &buffer_size);
+    
     snd_pcm_hw_params(pcm, params);
     snd_pcm_hw_params_free(params);
+    snd_pcm_prepare(pcm);
+
+    // --- PRE-FILL ALSA BUFFER WITH SILENCE ---
+    int16_t silence[AUDIO_PERIOD_FRAMES * channels];
+    memset(silence, 0, sizeof(silence));
+
+    // Write several silent periods to fully flush old data
+    for (int i  0; i < 4; i++)
+    {
+	    snd_pcm_writei(pcm, silence, AUDIO_PERIOD_FRAMES);
+    }
+
+    // Re-prepare device again to reset buffer pointers
+    snd_pcm_drop(pcm);
     snd_pcm_prepare(pcm);
 }
 
