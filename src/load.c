@@ -49,8 +49,8 @@ WavData load_wav_mmap(const char *filename)
 
 	// --- mmap whole file ---
 	void *mapping = mmap(NULL, file_size, PROT_READ, MAP_PRIVATE, fd, 0);
-	close(fd),
-		if (mapping == MAP_FAILED) { perror("mmap"); exit(1); }
+	close(fd);
+	if (mapping == MAP_FAILED) { perror("mmap"); exit(1); }
 
 	out.mapping = mapping;
 	out.mapping_size = file_size;
