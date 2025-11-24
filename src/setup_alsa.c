@@ -3,12 +3,8 @@
 #include <stdlib.h>
 
 #define AUDIO_PERIOD_FRAMES 441
-#define MAX_AUDIO_FRAMES 120000000
 
 snd_pcm_t *pcm = NULL;
-static int16_t audio_buffer[MAX_AUDIO_FRAMES * 2];
-int16_t *audio_data = audio_buffer;
-size_t audio_frames = 0;
 
 void setup_alsa(unsigned int sample_rate, unsigned int channels) {
     snd_pcm_hw_params_t *params;

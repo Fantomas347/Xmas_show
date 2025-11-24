@@ -14,7 +14,19 @@ typedef struct {
 extern Pattern patterns[MAX_PATTERNS];
 extern int pattern_count;
 
-void load_wav(const char *filename, uint32_t *sample_rate, uint16_t *channels, int16_t *audio_data, size_t *audio_frames, size_t max_frames);
+typdef struct {
+    uint32_t sample_rate;
+    uint16_t channels;
+    size_t frames;
+
+    int16_t *pcm;         // PCM data pointer inside mmap
+    void *mapping;        // base of mmap() region
+    size_t mapping_size;  // total mapped file size
+} WavData;
+
+WavData load_wav_mmap(const char *filename);
+void free_wav_mmap(WavData *wav);
+
 void load_patterns(const char *filename);
 
 #endif

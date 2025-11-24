@@ -29,84 +29,84 @@ typedef struct {
 Pattern patterns[MAX_PATTERNS];
 int pattern_count = 0;
 
-void load_wav(const char *filename, uint32_t *sample_rate, uint16_t *channels,
-              int16_t *audio_data, size_t *audio_frames, size_t max_frames)
+WavData load_wav_mmap(const char *filename)
 {
-    FILE *f = fopen(filename, "rb");
-    if (!f) { perror("WAV open"); exit(1); }
+	WavData out = {0};
 
-    RiffHeader riff;
-    if (fread(&riff, sizeof(RiffHeader), 1, f) != 1) {
-        fprintf(stderr, "Invalid WAV header (RIFF)\n");
-        exit(1);
+	// --- open file ---
+	int fd = open(filename, O_RDONLY);
+	if (fd < 0) { perror("open WAV"); exit(1); }
+
+	// --- get file size ---
+	struct stat st;
+	if (fstat(fd, &st) < 0) { perror("fstat"); exit(1); }
+	size_t file_size = st.st_size;
+
+	// --- mmap whole file ---
+	void *mapping = mmap(NULL, file_size, PROT_READ, MAP_PRIVATE, fd, 0);
+	close(fd),
+		if (mapping == MAP_FAILED) { perror("mmap"); exit(1); }
+
+	out.mapping = mapping;
+	out.mapping_size = file_size;
+
+	uint8_t *p = (uint8_t *)mapping;
+
+	// --- parse RIFF header ---
+	RiffHeader *riff = (RiffHeader *)p;
+	if (memcmp(riff->riff_id, "RIFF", 4) != 0 ||
+	    memcmp(riff->wave_id, "WAVE", 4) != 0) {
+	    fprintf(stderr, "Not a RIFF/WAVE file\n");
+	    exit(1);
+	}
+
+	p += sizeof(RiffHeader);
+
+	FmtChunk fmt = {0};
+	uint32_t data_size = 0;
+	uint8_t *data_ptr = NULL;
+
+	// --- walk chunks ---
+	while (p < (uint8_t *)mapping + file_size) {
+	    ChunkHeader *ch = (ChunkHeader *)p;
+
+	    if (memcmp(ch->chunk_id, "fmt ", 4) == 0) {
+                memcpy(&fmt, p + sizeof(ChunkHeader), sizeof(FmtChunk));
+
+	    } else if (memcmp(ch->chunk_id, "data", 4) == 0) {
+	        data_size = ch->chunk_size;
+		data_ptr = p + sizeof(ChunkHeader);
+		break;
+	    }
+
+	    p += sizeof(ChunkHeader) + ch->chunk_size;
+	}
+
+	if (!data_ptr) {
+		fprintf(stderr, "No data chunk found\n");
+		exit(1);
+	}
+
+	if (fmt.audio_format != 1 || fmt.bits_per_sample != 16) {
+	    fprintf(stderr, "Unsupported WAV format (need PCM 16-bit)\n");
+	    exit(1);
+	}
+
+        // --- fill output struct ---
+	out.sample_rate = fmt.sample_rate;
+	out.channels    = fmt.num_channels;
+	out.frames      = data_size / (fmt.num_channels * 2);
+	out.pcm         = (int16_t *)data_ptr;
+
+	return out;
+}
+
+void free_wav_mmap(WavData *wav)
+{
+    if (wav->mapping) {
+	    munmap(wav->mapping, wav->mapping_size);
     }
-    if (memcmp(riff.riff_id, "RIFF", 4) != 0 || memcmp(riff.wave_id, "WAVE", 4) != 0) {
-        fprintf(stderr, "Not a RIFF/WAVE file\n");
-        exit(1);
-    }
-
-    FmtChunk fmt = {0};
-    uint32_t data_size = 0;
-    long     data_offset = 0;
-
-    // Scan chunks until we find "fmt " and "data"
-    while (!feof(f)) {
-        ChunkHeader ch;
-        if (fread(&ch, sizeof(ChunkHeader), 1, f) != 1)
-            break;
-
-        if (memcmp(ch.chunk_id, "fmt ", 4) == 0) {
-            if (ch.chunk_size < sizeof(FmtChunk)) {
-                fprintf(stderr, "fmt chunk too small\n");
-                exit(1);
-            }
-            if (fread(&fmt, sizeof(FmtChunk), 1, f) != 1) {
-                fprintf(stderr, "Failed to read fmt chunk\n");
-                exit(1);
-            }
-            // Skip any extra fmt bytes if present
-            if (ch.chunk_size > sizeof(FmtChunk)) {
-                fseek(f, ch.chunk_size - sizeof(FmtChunk), SEEK_CUR);
-            }
-        } else if (memcmp(ch.chunk_id, "data", 4) == 0) {
-            data_size = ch.chunk_size;
-            data_offset = ftell(f);
-            // this is where the PCM data actually starts
-            break;
-        } else {
-            // Skip unknown chunk
-            fseek(f, ch.chunk_size, SEEK_CUR);
-        }
-    }
-
-    if (data_size == 0 || data_offset == 0) {
-        fprintf(stderr, "No data chunk in WAV\n");
-        exit(1);
-    }
-
-    if (fmt.audio_format != 1 || fmt.bits_per_sample != 16) {
-        fprintf(stderr, "Unsupported WAV format (need PCM 16-bit)\n");
-        exit(1);
-    }
-
-    *sample_rate = fmt.sample_rate;
-    *channels    = fmt.num_channels;
-
-    size_t frames = data_size / (fmt.num_channels * sizeof(int16_t));
-    if (frames > max_frames) {
-        fprintf(stderr, "WAV too large (%zu frames)\n", frames);
-        exit(1);
-    }
-
-    // Read PCM data into buffer
-    fseek(f, data_offset, SEEK_SET);
-    size_t read = fread(audio_data, sizeof(int16_t) * fmt.num_channels, frames, f);
-    if (read != frames) {
-        fprintf(stderr, "Short read: expected %zu frames, got %zu\n", frames, read);
-    }
-
-    *audio_frames = read;
-    fclose(f);
+    memset(wav, 0, sizeof(*wav));
 }
 
 void load_patterns(const char *filename) {

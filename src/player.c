@@ -35,6 +35,8 @@ static long wake_intervals_us[MAX_RUNS];
 static size_t runtime_index = 0;
 static int underrun_count = 0;
 
+static WavData wav;
+
 // --------------------------------------------------------------
 // Utility functions
 // --------------------------------------------------------------
@@ -67,12 +69,12 @@ static void do_reprefill(size_t *frame_idx_ptr)
     size_t fi = *frame_idx_ptr;
 
     for (int r = 0; r < PREFILL_PERIODS; ++r) {
-        if (fi + AUDIO_PERIOD_FRAMES > audio_frames)
+        if (fi + AUDIO_PERIOD_FRAMES > wav.frames)
             break;
 
         snd_pcm_sframes_t w =
             snd_pcm_writei(pcm,
-                           &audio_data[fi * 2],
+                           &wav.pcm[fi * wav.channels],
                            AUDIO_PERIOD_FRAMES);
 
         if (w < 0) {
@@ -100,7 +102,7 @@ static void *audio_thread_fn(void *arg) {
     const snd_pcm_sframes_t max_delay_frames =
         MAX_BUFFER_PERIODS * AUDIO_PERIOD_FRAMES;
 
-    while (frame_idx + AUDIO_PERIOD_FRAMES * 3 <= audio_frames &&
+    while (frame_idx + AUDIO_PERIOD_FRAMES * 3 <= wav.frames &&
            runtime_index < MAX_RUNS) {
 
         clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &next_time, NULL);
@@ -129,7 +131,7 @@ static void *audio_thread_fn(void *arg) {
             clock_gettime(CLOCK_MONOTONIC, &call_start);
 
             snd_pcm_sframes_t written =
-                snd_pcm_writei(pcm, &audio_data[frame_idx * 2],
+                snd_pcm_writei(pcm, &wav.pcm[frame_idx * wav.channels],
                                AUDIO_PERIOD_FRAMES);
             if (written < 0) {
                 underrun_count++;
@@ -289,10 +291,9 @@ void play_song(const char *base_name) {
 
     reset_runtime_state();
 
-    uint32_t sample_rate;
-    uint16_t channels;
-    load_wav(wav_file, &sample_rate, &channels,
-             audio_data, &audio_frames, MAX_AUDIO_FRAMES);
+    wav = load_wav_mmap(wav_file);
+    uint32_t sample_rate = wav.sample_rate;
+    uint16_t channels    = wav.channels;
     load_patterns(pattern_file);
     setup_alsa(sample_rate, channels);
 
@@ -324,6 +325,8 @@ void play_song(const char *base_name) {
     save_runtime_log(audio_log,
                      runtimes_us, wake_intervals_us,
                      jitter_us, runtime_index, underrun_count);
+
+    free_wav_mmap(&wav);
 
     printf("Playback finished for '%s'. Logs saved.\n", base_name);
 }
