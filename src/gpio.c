@@ -16,16 +16,32 @@ static int gpio_fd = -1;
 // Raspberry Pi Pinout.
 // This means 4 pins on the left and 4 pins on the right.
 // The corresponding physical pins are, in order:
-// 15, 29, 31, 37, 16, 18, 22, 36.
-const unsigned int led_lines[8] = {22, 5, 6, 26, 23, 24, 25, 16};
+// 11, 13, 27, 29, 31, 33, 35, 37.
+
+const unsigned int led_lines[8] = {17, 27, 0, 5, 6, 13, 19, 26};
 
 // --------------------------------------------------------------
 // Initialization and cleanup
 // --------------------------------------------------------------
 void gpio_init(void) {
+    // Try /dev/gpiomem first (works without root, preferred on Raspberry Pi)
+    gpio_fd = open("/dev/gpiomem", O_RDWR | O_SYNC);
+    if (gpio_fd >= 0) {
+        // /dev/gpiomem maps GPIO registers directly at offset 0
+        gpio = (volatile uint32_t *)mmap(
+            NULL, GPIO_LEN, PROT_READ | PROT_WRITE, MAP_SHARED,
+            gpio_fd, 0
+        );
+        if (gpio != MAP_FAILED) {
+            return;  // Success with /dev/gpiomem
+        }
+        close(gpio_fd);
+    }
+
+    // Fall back to /dev/mem (requires root)
     gpio_fd = open("/dev/mem", O_RDWR | O_SYNC);
     if (gpio_fd < 0) {
-        perror("open /dev/mem");
+        perror("open /dev/gpiomem and /dev/mem both failed");
         exit(1);
     }
 

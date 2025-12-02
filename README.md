@@ -1,67 +1,112 @@
-Real-Time LED + Music Sequencer
+# Real-Time LED + Music Sequencer
 
-A hard real-time LED and audio sequencer running on a Raspberry Pi 1
-using low-level C. It synchronizes a WAV audio track with precisely
-timed LED patterns, suitable for stage shows, visual effects, or
-embedded demo purposes.
+A hard real-time LED and audio sequencer for Raspberry Pi. Synchronizes audio playback (MP3/WAV) with precisely timed LED patterns via GPIO.
 
-Overview
+## Features
 
-The sequencer plays: - a WAV audio file - a matching LED pattern file
-(.txt) Both sharing the same base name.
+- Real-time operation on Raspberry Pi 1/2/3/4
+- Supports MP3 and WAV audio formats
+- Dynamic sample rate handling (32kHz, 44.1kHz, 48kHz)
+- Direct GPIO register access (memory-mapped)
+- Multi-threaded design with SCHED_FIFO real-time scheduling
+- LED thread: 10ms period, priority 80
+- Audio thread: 30ms period, priority 75
+- WAV files: mmap + mlock for hard real-time (no disk I/O during playback)
+- MP3 files: ring buffer with ~1 sec pre-buffer for soft real-time
+- Optional UDP control mode
+- Timing and jitter logging
 
-Example: ./sequencer jungle
+## Dependencies
 
-This loads: ~/music/jungle.wav ~/music/jungle.txt
+```bash
+sudo apt-get install libasound2-dev libmpg123-dev
+```
 
+## Building
 
+```bash
+# For Raspberry Pi 4
+make PLATFORM=RPI4
 
-Features
+# For Raspberry Pi 1/Zero
+make PLATFORM=RPI1
 
--   Real-time operation on Raspberry Pi 1
--   Direct GPIO register access
--   LED updates synchronized with audio
--   WAV playback using ALSA
--   Multi-threaded design
--   Optional UDP control mode
--   Timing and jitter logging
--   Works on low-power hardware
+# Set capabilities for non-root execution
+make setcap
+```
 
+Available platforms: `RPI1`, `RPI2`, `RPI3`, `RPI4`
 
+## Capabilities Setup
 
-Directory Structure
+The sequencer needs elevated privileges for GPIO access and real-time scheduling. Instead of running as root, use Linux capabilities:
 
-/src → C source files /include → Header files /music → WAV + .txt
-pattern pairs /logs → Timing logs
+```bash
+sudo setcap cap_sys_rawio,cap_sys_nice+ep ./sequencer
+```
 
+Or use the Makefile target:
+```bash
+make setcap
+```
 
+This grants:
+- `cap_sys_rawio`: GPIO memory mapping
+- `cap_sys_nice`: SCHED_FIFO real-time scheduling
 
-LED Pattern Format
+Note: Capabilities must be re-applied after each recompile.
 
-Each line: [duration_ms] [8-bit LED pattern]
+## Usage
 
-Example: 0100 1010.1100
+```bash
+# Play a song (loads songname.mp3/.wav and songname.txt from music dir)
+./sequencer songname
 
+# Specify custom music directory
+./sequencer -m /path/to/music/ songname
 
+# Verbose mode (print timing stats)
+./sequencer -v songname
 
-Usage
+# Interactive menu mode
+./sequencer
+```
 
-Compile: make
+## Directory Structure
 
-Run: ./sequencer
+```
+/src        - C source files
+/include    - Header files
+/test       - Test files
+```
 
+## LED Pattern Format
 
+Pattern files (`.txt`) must match the audio filename. Each line:
 
-Hardware Requirements
+```
+TTTT BBBB.BBBB
+```
 
--   Raspberry Pi 1
--   8 LEDs connected to GPIO
--   Audio output through 3.5mm jack
--   ALSA library
+- `TTTT`: Duration in milliseconds (minimum 10ms)
+- `BBBB.BBBB`: 8-bit LED pattern (1=on, 0=off), dot is optional separator
 
+Example:
+```
+0100 1010.1100
+0050 0101.0011
+0200 1111.1111
+```
 
+## Hardware Requirements
 
-Purpose
+- Raspberry Pi (1/2/3/4)
+- 8 LEDs connected to GPIO pins
+- Audio output (3.5mm jack or HDMI)
+- ALSA-compatible audio
 
-Demonstrates synchronized control of audio and LED subsystems using a
-custom low-level engine.
+## Integration with v43-christmas-lights
+
+This sequencer is designed to work with the v43-christmas-lights Node.js controller. The controller spawns the sequencer as a child process for each song playback.
+
+See `/home/linux/v43-christmas-lights/` for the controller setup.

@@ -3,7 +3,15 @@
 
 #include <stdint.h>
 
-#define GPIO_BASE_ADDR 0x20200000
+// GPIO base addresses for different Pi models
+#if defined(RPI4)
+    #define GPIO_BASE_ADDR 0xFE200000  // BCM2711 (Pi 4)
+#elif defined(RPI2) || defined(RPI3)
+    #define GPIO_BASE_ADDR 0x3F200000  // BCM2836/BCM2837 (Pi 2, 3)
+#else
+    #define GPIO_BASE_ADDR 0x20200000  // BCM2835 (Pi 1, Zero)
+#endif
+
 #define GPIO_LEN 0xB4
 
 extern volatile uint32_t *gpio;
