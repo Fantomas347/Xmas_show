@@ -3,6 +3,7 @@
  *
  * Real-time audio playback with synchronized LED control.
  * Supports MP3 (streaming) and WAV (mmap) formats.
+ * Dynamic sample rate support (32kHz, 44.1kHz, 48kHz).
  *
  * Architecture:
  * =============
@@ -15,8 +16,7 @@
  *                               | writes
  *                               v
  *                     +-------------------+
- *                     |    Ring Buffer    | (~1 sec, 44100 frames)
- *                     |    (lock-free)    |
+ *                     |    Ring Buffer    | (~3 sec at 48kHz stereo)
  *                     +---------+---------+
  *                               | reads
  *                               v
@@ -36,7 +36,11 @@
  * - Decoder thread: Normal priority (MP3 only), runs ahead filling buffer
  *
  * For WAV files: mmap + mlock for hard real-time (no disk I/O during playback)
- * For MP3 files: Ring buffer with ~1 sec pre-buffer for soft real-time
+ * For MP3 files: Ring buffer with ~3 sec pre-buffer for soft real-time
+ *
+ * Capabilities required (non-root execution):
+ * - cap_sys_rawio:  GPIO memory mapping
+ * - cap_sys_nice:   SCHED_FIFO real-time scheduling
  */
 
 #include "player.h"
