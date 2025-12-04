@@ -1,9 +1,22 @@
+12.02.2025
+ - Dynamic sample rate support: audio period frames now calculated at runtime
+   based on actual sample rate (32kHz, 44.1kHz, 48kHz all supported)
+ - Fixed buffer underruns with 48kHz MP3 files (e.g., outbreak.mp3)
+ - Added hardware volume control via ALSA mixer (init_mixer, set_hw_volume)
+ - Added `make setcap` target for setting Linux capabilities
+ - Can now run as non-root user with capabilities:
+   cap_sys_rawio (GPIO), cap_sys_nice (SCHED_FIFO)
+
+12.01.2025
+ - Added MP3 support via libmpg123
+ - Ring buffer for MP3 streaming (~3 sec buffer at 48kHz stereo)
+ - Decoder thread for MP3 runs at normal priority
+ - Audio thread reads from ring buffer for MP3, direct mmap for WAV
+
 11.24.2025
- - wav memory allocation now dynamically done with mmap (was 480 MB RAM
- allocated, which was almost out of bounds and broke the program)
-
+ - WAV memory allocation now dynamically done with mmap (was 480 MB RAM
+   allocated, which was almost out of bounds and broke the program)
  - mlock for audio, so no demand paging (a.k.a. lazy loading), whole .wav is
- loaded into the RAM, avoiding flash page faults. Added optional
- mlockall, so all of the code and data can be loaded into the RAM.
-
- - replaced fprintf() logging with syslog. Will need a proper logging thread.
+   loaded into the RAM, avoiding flash page faults. Added optional
+   mlockall, so all of the code and data can be loaded into the RAM.
+ - Replaced fprintf() logging with syslog. Will need a proper logging thread.

@@ -128,8 +128,8 @@ void load_patterns(const char *filename) {
         }
         int dur; char bits[10];
         if (sscanf(line, "%d %9s", &dur, bits) == 2) {
-            if (dur < 70) dur = 70;
-            dur = ((dur + 5) / 10) * 10;
+            if (dur < 10) dur = 10;  // minimum 10ms
+            dur = ((dur + 5) / 10) * 10;  // round to nearest 10ms
             uint8_t p = 0;
             for (int i = 0, j = 0; i < 8 && bits[j]; ++j) {
                 if (bits[j] == '.') continue;
