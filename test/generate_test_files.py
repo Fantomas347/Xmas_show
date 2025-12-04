@@ -19,21 +19,21 @@ AUDIO_MP3_FILENAME = "test.mp3"
 CONTROL_FILENAME = "test.txt"
 
 # Patterns to write in the control file for each tick (cycled)
-#PATTERNS = [
-#    "0000.0001",
-#    "0000.0010",
-#    "0000.0100",
-#    "0000.1000",
-#    "0001.0000",
-#    "0010.0000",
-#    "0100.0000",
-#    "1000.0000",
-#]
-
 PATTERNS = [
     "0000.0001",
     "0000.0010",
+    "0000.0100",
+    "0000.1000",
+    "0001.0000",
+    "0010.0000",
+    "0100.0000",
+    "1000.0000",
 ]
+
+#PATTERNS = [
+#    "0000.0001",
+#    "0000.0010",
+#]
 
 def generate_metronome_wav():
     num_samples = int(DURATION_SECONDS * SAMPLE_RATE)
