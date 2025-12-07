@@ -79,7 +79,7 @@ void signal_handler(int sig)
         case SIGTERM:
             // Set flag for threads to check - they will exit their loops
             stop_requested = 1;
-            // Turn off LEDs immediately (signal-safe GPIO write)
+            // Turn off LEDs immediately on forced termination (signal-safe GPIO write)
             gpio_all_off(led_lines, 8);
             break;
 
@@ -96,8 +96,9 @@ void signal_handler(int sig)
 
 
 void print_usage(const char *prog) {
-    printf("Usage: %s [-v] [-m musicdir] [-s on|off] [songname]\n", prog);
+    printf("Usage: %s [-v] [-o] [-m musicdir] [-s on|off] [songname]\n", prog);
     printf("  -v              Verbose mode (print GPIO timing stats)\n");
+    printf("  -o              Turn off LEDs on exit (default: keep last state)\n");
     printf("  -m musicdir     Music directory (default: /home/linux/music/)\n");
     printf("  -s on|off       Turn all LEDs on or off and exit\n");
     printf("  songname        Play song directly (without .wav/.txt extension)\n");
@@ -123,10 +124,14 @@ int main(int argc, char *argv[]) {
     // Parse command line options
     int opt;
     char *switch_mode = NULL;  // "on" or "off"
-    while ((opt = getopt(argc, argv, "vm:s:h")) != -1) {
+    int auto_off = 0;          // -o flag: turn off LEDs on exit
+    while ((opt = getopt(argc, argv, "vom:s:h")) != -1) {
         switch (opt) {
             case 'v':
                 set_verbose_mode(1);
+                break;
+            case 'o':
+                auto_off = 1;
                 break;
             case 'm':
                 set_music_dir(optarg);
@@ -142,6 +147,9 @@ int main(int argc, char *argv[]) {
                 return 1;
         }
     }
+
+    // Pass auto_off setting to player module
+    set_auto_off(auto_off);
 
     printf("Initializing GPIO...\n");
     gpio_init();
@@ -237,8 +245,10 @@ int main(int argc, char *argv[]) {
 
     }
 
-    // Ensure all LEDs are off before cleanup
-    gpio_all_off(led_lines, 8);
+    // Only turn off LEDs if auto_off mode is enabled (-o flag)
+    if (auto_off) {
+        gpio_all_off(led_lines, 8);
+    }
 
     gpio_cleanup();
     printf("GPIO cleaned up. Goodbye.\n");

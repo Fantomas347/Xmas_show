@@ -11,5 +11,7 @@ void play_song(const char *base_name);
 void reset_runtime_state(void);
 void set_verbose_mode(int enabled);
 void set_music_dir(const char *dir);
+void set_auto_off(int enabled);
+int get_auto_off(void);
 
 #endif

@@ -63,6 +63,10 @@ static struct timespec playback_end_time;
 // Verbose mode flag (set via -v command line arg)
 static int verbose_mode = 0;
 
+// Auto-off flag (set via -o command line arg)
+// Default is 0 (keep last LED state on exit)
+static int auto_off_mode = 0;
+
 static AudioStream *audio_stream = NULL;
 
 // --------------------------------------------------------------
@@ -145,6 +149,14 @@ static void make_log_filename(char *dst, size_t len,
 
 void set_verbose_mode(int enabled) {
     verbose_mode = enabled;
+}
+
+void set_auto_off(int enabled) {
+    auto_off_mode = enabled;
+}
+
+int get_auto_off(void) {
+    return auto_off_mode;
 }
 
 void set_music_dir(const char *dir) {
@@ -518,7 +530,10 @@ void play_song(const char *base_name) {
 
     pthread_join(led_thread, NULL);
 
-    gpio_all_off(led_lines, 8);
+    // Only turn off LEDs if auto_off_mode is enabled (-o flag)
+    if (auto_off_mode) {
+        gpio_all_off(led_lines, 8);
+    }
 
     if (has_audio) {
         alsa_close();
